@@ -1,6 +1,6 @@
 // เปลือก PWA — แคชเฉพาะไฟล์ของตัวเอง
 // ตัวแอปจริงอยู่คนละโดเมน (script.google.com) จึงไม่แตะ ปล่อยให้ผ่านไปตามปกติ
-const CACHE  = 'hwt-shell-v4';
+const CACHE  = 'hwt-shell-v5';
 const ASSETS = [
   './', './index.html', './manifest.webmanifest',
   './icon-192.png', './icon-512.png', './icon-maskable.png',

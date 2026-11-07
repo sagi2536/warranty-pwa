@@ -31,7 +31,7 @@
   #app{width:100%;height:100%;border:0;background:#f0f6ff;display:block}
 
   .screen{
-    position:fixed;inset:0;display:none;place-items:center;
+    position:fixed;inset:0;display:none;place-items:safe center;
     padding:max(24px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-right))
             max(24px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left));
     background:linear-gradient(140deg,#1abc9c,#0984e3);
@@ -62,17 +62,31 @@
   .hint{margin:18px 0 0;font-size:12.5px;color:#94a3b8;line-height:1.7}
   .big{font-size:48px;margin-bottom:12px}
 
-  /* จอเตี้ย เช่น แนวนอน หรือหน้าต่างแบ่งครึ่งบนจอพับ/จอคู่ */
-  @media (max-height:560px){
+  /* จอเตี้ย: iPhone Duo จอนอกแนวนอน 594x368 · จอในแบ่งสองหน้าต่าง 385x571 · มือถือทั่วไปแนวนอน */
+  @media (max-height:620px){
     .card{padding:22px 20px}
     .card img{width:54px;height:54px;margin-bottom:10px}
     h1{font-size:18px}
-    p{margin-bottom:14px}
-    .hint{margin-top:12px}
+    p{font-size:14px;margin-bottom:14px}
+    .hint{margin-top:12px;font-size:12px}
   }
-  /* จอคู่/จอพับที่แบ่งเป็นสองส่วน — ให้เนื้อหาอยู่ในส่วนเดียว ไม่คร่อมรอยพับ */
+  @media (max-height:430px){
+    .card{padding:18px 18px;border-radius:18px}
+    .card img{width:40px;height:40px;margin-bottom:8px}
+    h1{font-size:16.5px;margin-bottom:5px}
+    p{margin-bottom:11px;line-height:1.55}
+    input{padding:11px 13px}
+    button{padding:11px;margin-top:9px}
+    .hint{line-height:1.55}
+  }
+  /* จอพับที่เปิดกางแล้ว (จอใน 669-951px) — การ์ดกว้างขึ้นได้ ไม่ต้องผอมเท่ามือถือ */
+  @media (min-width:640px){
+    .card{max-width:480px}
+  }
+  /* เผื่ออนาคต: Safari 27.1 ยังปิด Viewport Segments API เป็นค่าเริ่มต้น (ต้องเปิดใน Feature Flags เอง)
+     กฎนี้จึงยังไม่ทำงานบนเครื่องผู้ใช้ทั่วไป แต่ใส่ไว้ให้พร้อมเมื่อเปิดใช้เป็นมาตรฐาน */
   @media (horizontal-viewport-segments:2){
-    .screen{place-items:center start}
+    .screen{place-items:safe center start}
     .card{max-width:min(430px,env(viewport-segment-width 0 0))}
   }
 
@@ -187,7 +201,17 @@ function extractId(v) {
 
 function execUrl(id) { return 'https://script.google.com/macros/s/' + id + '/exec'; }
 
+// Safari จะยืดสีพื้นหลังของหน้าไปเติมพื้นที่แถบควบคุม (เช่นจอนอกของ iPhone Duo)
+// ถ้าสีไม่ตรงกับหน้าที่แสดงอยู่ จะเห็นเป็นแถบสีแปลกปลอมตรงขอบ
+function setChrome(color) {
+  document.body.style.backgroundColor = color;
+  document.documentElement.style.backgroundColor = color;
+  const m = document.querySelector('meta[name="theme-color"]');
+  if (m) m.setAttribute('content', color);
+}
+
 function show(which) {
+  setChrome(which === 'app' ? '#0f3460' : '#12a0bf');   // กลางแถบไล่สีของหน้าตั้งค่า
   document.getElementById('setup').classList.toggle('on', which === 'setup');
   document.getElementById('offline').classList.toggle('on', which === 'offline');
   document.getElementById('appWrap').classList.toggle('on', which === 'app');
