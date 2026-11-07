@@ -1,6 +1,6 @@
 // เปลือก PWA — แคชเฉพาะไฟล์ของตัวเอง
 // ตัวแอปจริงอยู่คนละโดเมน (script.google.com) จึงไม่แตะ ปล่อยให้ผ่านไปตามปกติ
-const CACHE  = 'hwt-shell-v8';
+const CACHE  = 'hwt-shell-v9';
 const ASSETS = [
   './', './index.html', './manifest.webmanifest',
   './icon-192.png', './icon-512.png', './icon-maskable.png',
@@ -24,8 +24,14 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET' || url.origin !== location.origin) return;
 
   // ขอจากเน็ตก่อนเพื่อให้ได้เวอร์ชันใหม่เสมอ ถ้าเน็ตล่มค่อยใช้ของที่แคชไว้
+  // ตัวหน้าเว็บต้องบังคับ revalidate ด้วย เพราะ GitHub Pages ตั้ง max-age=600
+  // ถ้าปล่อยให้ fetch ใช้แคช HTTP ตามปกติ ผู้ใช้จะติดเวอร์ชันเก่าไปอีก 10 นาทีหลัง deploy
+  const req = e.request.mode === 'navigate'
+    ? new Request(e.request.url, { cache: 'no-cache', credentials: 'same-origin' })
+    : e.request;
+
   e.respondWith(
-    fetch(e.request)
+    fetch(req)
       .then(res => {
         const copy = res.clone();
         caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
