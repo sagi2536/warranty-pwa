@@ -213,7 +213,14 @@ function setChrome(color) {
   if (m) m.setAttribute('content', color);
 }
 
-let appBg  = '#0f3460';      // สีพื้นหลังของแอป อัปเดตจากข้อความที่แอปส่งมา
+// iOS อ่านสีแถบสถานะตอนเปิดแอปครั้งเดียว เปลี่ยนทีหลังไม่มีผลจนกว่าจะเปิดใหม่
+// จึงต้องรู้สีที่ถูกต้องตั้งแต่วินาทีแรก — จำสีที่แอปเคยบอกไว้ แล้วใช้เลยตอนเปิด
+const BG_KEY = 'hwt-appbg';
+function rememberedBg() {
+  try { const v = localStorage.getItem(BG_KEY); if (v) return v; } catch (_) {}
+  return matchMedia('(prefers-color-scheme: dark)').matches ? '#0b1220' : '#f0f5fb';
+}
+let appBg   = rememberedBg();
 let current = '';
 
 function show(which) {
@@ -370,6 +377,7 @@ window.addEventListener('message', e => {
   const bg = d.bg.trim();
   if (!/^(#[0-9a-f]{3,8}|rgba?\([\d.,\s%]+\))$/i.test(bg)) return;
   appBg = bg;
+  try { localStorage.setItem(BG_KEY, bg); } catch (_) {}   // ใช้ตอนเปิดครั้งหน้า
   if (current === 'app') setChrome(bg);
 });
 
