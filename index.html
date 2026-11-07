@@ -25,7 +25,7 @@
     position:fixed;inset:0;display:none;place-items:center;padding:24px;
     padding-top:max(24px,env(safe-area-inset-top));padding-bottom:max(24px,env(safe-area-inset-bottom));
     background:linear-gradient(140deg,#1abc9c,#0984e3);
-    font-family:'Sarabun',sans-serif;overflow-y:auto;
+    font-family:'Sarabun',sans-serif;overflow-y:auto;z-index:20;
   }
   .screen.on{display:grid}
   .card{
@@ -46,10 +46,50 @@
     font-family:'Sarabun',sans-serif;font-size:16px;font-weight:700;
   }
   button:active{transform:scale(.99)}
+  button.ghost{background:none;color:#64748b;font-weight:600;font-size:14.5px;padding:10px}
   .err{display:none;margin-top:12px;font-size:13.5px;color:#e74c3c;font-weight:600}
   .err.on{display:block}
   .hint{margin:18px 0 0;font-size:12.5px;color:#94a3b8;line-height:1.7}
   .big{font-size:48px;margin-bottom:12px}
+
+  /* ปุ่มติดตั้งลอยมุมล่างซ้าย (ปุ่ม + ของแอปอยู่มุมล่างขวา จึงไม่ชนกัน) */
+  #install{
+    position:fixed;z-index:30;display:none;align-items:center;gap:9px;
+    left:max(12px,env(safe-area-inset-left));
+    bottom:max(14px,env(safe-area-inset-bottom));
+    padding:10px 8px 10px 14px;border-radius:99px;border:none;width:auto;margin:0;
+    background:#0f3460;color:#fff;font-family:'Sarabun',sans-serif;font-size:14px;font-weight:700;
+    box-shadow:0 6px 22px rgba(15,52,96,.4);cursor:pointer;
+  }
+  #install.on{display:flex}
+  #install .x{
+    display:grid;place-items:center;width:26px;height:26px;border-radius:50%;
+    background:rgba(255,255,255,.16);font-size:13px;font-weight:400;
+  }
+
+  /* แผ่นบอกวิธีติดตั้ง */
+  #sheet{position:fixed;inset:0;z-index:40;display:none;background:rgba(15,52,96,.55);backdrop-filter:blur(5px)}
+  #sheet.on{display:grid;place-items:end center}
+  .sheet-in{
+    background:#fff;width:100%;max-width:460px;border-radius:22px 22px 0 0;
+    padding:26px 24px max(26px,env(safe-area-inset-bottom));font-family:'Sarabun',sans-serif;
+  }
+  .sheet-in h2{font-family:'Kanit',sans-serif;font-size:19px;color:#0f3460;margin:0 0 6px}
+  .sheet-in .lead{font-size:14px;color:#64748b;margin:0 0 18px;line-height:1.7}
+  ol{margin:0;padding-left:0;list-style:none;counter-reset:s}
+  ol li{
+    counter-increment:s;position:relative;padding:0 0 16px 42px;
+    font-size:14.5px;color:#1e293b;line-height:1.65;
+  }
+  ol li:last-child{padding-bottom:4px}
+  ol li::before{
+    content:counter(s);position:absolute;left:0;top:-1px;width:28px;height:28px;
+    border-radius:50%;background:linear-gradient(135deg,#1abc9c,#0984e3);color:#fff;
+    display:grid;place-items:center;font-family:'Kanit',sans-serif;font-size:14px;font-weight:600;
+  }
+  ol li b{color:#0f3460}
+  .ic{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:7px;
+      background:#eef4fb;vertical-align:-6px;margin:0 2px}
 </style>
 </head>
 <body>
@@ -58,7 +98,23 @@
 <iframe id="app" title="ติดตามบ้าน"
         allow="clipboard-read; clipboard-write; camera; geolocation"></iframe>
 
-<!-- ตั้งค่าครั้งแรก: ถามลิงก์ของระบบ แล้วจำไว้ในเครื่อง -->
+<!-- ปุ่มติดตั้ง -->
+<button id="install" onclick="installClick(event)">
+  <span id="installLabel">ติดตั้งลงหน้าจอ</span>
+  <span class="x" onclick="dismissInstall(event)">✕</span>
+</button>
+
+<!-- วิธีติดตั้ง -->
+<div id="sheet" onclick="if(event.target.id==='sheet')closeSheet()">
+  <div class="sheet-in">
+    <h2 id="sheetTitle"></h2>
+    <p class="lead" id="sheetLead"></p>
+    <ol id="sheetSteps"></ol>
+    <button class="ghost" onclick="closeSheet()">ปิด</button>
+  </div>
+</div>
+
+<!-- ตั้งค่าครั้งแรก -->
 <div class="screen" id="setup">
   <div class="card">
     <img src="icon-192.png" alt="">
@@ -88,6 +144,9 @@
 
 <script>
 const KEY = 'hwt-exec-id';
+const DISMISS = 'hwt-install-hidden';
+
+/* ───────── เชื่อมต่อระบบ ───────── */
 
 // ดึงเฉพาะรหัส deployment ออกจากสิ่งที่วางมา
 // รองรับทั้งลิงก์เต็ม ลิงก์ที่มี /u/<เลข>/ คั่น และรหัสเปล่า ๆ
@@ -96,9 +155,7 @@ function extractId(v) {
   return m ? m[0] : '';
 }
 
-function execUrl(id) {
-  return 'https://script.google.com/macros/s/' + id + '/exec';
-}
+function execUrl(id) { return 'https://script.google.com/macros/s/' + id + '/exec'; }
 
 function show(which) {
   document.getElementById('setup').classList.toggle('on', which === 'setup');
@@ -119,6 +176,91 @@ function start(id) {
   show('app');
 }
 
+/* ───────── ติดตั้งลงหน้าจอ ───────── */
+
+let deferred = null;
+const UA = navigator.userAgent || '';
+
+function isStandalone() {
+  return matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+}
+// เบราว์เซอร์ในแอป (LINE/Facebook/IG) ติดตั้งไม่ได้ ต้องเปิดในเบราว์เซอร์จริงก่อน
+function isInApp()  { return /\bLine\//i.test(UA) || /FBAN|FBAV|Instagram/i.test(UA); }
+function isIOS()    { return /iPad|iPhone|iPod/.test(UA) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
+function dismissed(){ try { return localStorage.getItem(DISMISS) === '1'; } catch (_) { return false; } }
+
+function refreshInstallButton() {
+  const show = !isStandalone() && !dismissed() && (deferred || isIOS() || isInApp());
+  document.getElementById('installLabel').textContent =
+    isInApp() ? 'เปิดในเบราว์เซอร์' : 'ติดตั้งลงหน้าจอ';
+  document.getElementById('install').classList.toggle('on', show);
+}
+
+function dismissInstall(e) {
+  e.stopPropagation();
+  try { localStorage.setItem(DISMISS, '1'); } catch (_) {}
+  document.getElementById('install').classList.remove('on');
+}
+
+function sheet(title, lead, steps) {
+  document.getElementById('sheetTitle').textContent = title;
+  document.getElementById('sheetLead').textContent  = lead;
+  document.getElementById('sheetSteps').innerHTML   = steps.map(s => '<li>' + s + '</li>').join('');
+  document.getElementById('sheet').classList.add('on');
+}
+function closeSheet() { document.getElementById('sheet').classList.remove('on'); }
+
+async function installClick(e) {
+  e.stopPropagation();
+
+  // Chrome/Edge/Android — ติดตั้งได้เลย
+  if (deferred) {
+    deferred.prompt();
+    const res = await deferred.userChoice.catch(() => null);
+    deferred = null;
+    if (res && res.outcome === 'accepted') document.getElementById('install').classList.remove('on');
+    else refreshInstallButton();
+    return;
+  }
+
+  if (isInApp()) {
+    sheet('เปิดในเบราว์เซอร์ก่อน',
+      'หน้านี้เปิดอยู่ในเบราว์เซอร์ของแอป LINE/Facebook ซึ่งติดตั้งลงหน้าจอไม่ได้ ต้องย้ายไปเปิดในเบราว์เซอร์จริงก่อน',
+      ['แตะปุ่ม <b>⋯</b> หรือ <b>⌄</b> ที่มุมจอ',
+       'เลือก <b>เปิดในเบราว์เซอร์</b> (Open in browser / เปิดด้วย Safari หรือ Chrome)',
+       'เมื่อหน้าเปิดในเบราว์เซอร์แล้ว แตะปุ่ม <b>ติดตั้งลงหน้าจอ</b> อีกครั้ง']);
+    return;
+  }
+
+  if (isIOS()) {
+    sheet('เพิ่มลงหน้าจอโฮม',
+      'บน iPhone/iPad ทำได้จาก Safari เท่านั้น (Chrome บน iOS ทำไม่ได้)',
+      ['เปิดหน้านี้ด้วย <b>Safari</b>',
+       'แตะปุ่ม <b>แชร์</b> <span class="ic">􀈂</span> ที่แถบล่าง (รูปสี่เหลี่ยมมีลูกศรขึ้น)',
+       'เลื่อนลงหา <b>เพิ่มไปยังหน้าจอโฮม</b> (Add to Home Screen)',
+       'แตะ <b>เพิ่ม</b> มุมขวาบน']);
+    return;
+  }
+
+  sheet('ติดตั้งแอป',
+    'ถ้าไม่เห็นปุ่มติดตั้งอัตโนมัติ ทำตามขั้นตอนนี้ได้',
+    ['แตะเมนู <b>⋮</b> มุมขวาบนของเบราว์เซอร์',
+     'เลือก <b>ติดตั้งแอป</b> หรือ <b>เพิ่มลงในหน้าจอหลัก</b>',
+     'ถ้าไม่เจอ ลองเปิดด้วย <b>Chrome</b> หรือ <b>Edge</b> — Firefox บางรุ่นไม่รองรับ']);
+}
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferred = e;
+  refreshInstallButton();
+});
+window.addEventListener('appinstalled', () => {
+  deferred = null;
+  document.getElementById('install').classList.remove('on');
+});
+
+/* ───────── เริ่มทำงาน ───────── */
+
 (function boot() {
   // รหัสส่งมาทาง #hash ได้ เพื่อไม่ต้องเก็บลิงก์ไว้ในโค้ดที่เปิดเป็นสาธารณะ
   let id = extractId(location.hash);
@@ -128,13 +270,16 @@ function start(id) {
   }
   if (!id) { try { id = localStorage.getItem(KEY) || ''; } catch (_) {} }
 
-  // เปิดด้วย ?setup เพื่อตั้งลิงก์ใหม่
-  if (new URLSearchParams(location.search).has('setup')) id = '';
+  // เปิดด้วย ?setup เพื่อตั้งลิงก์ใหม่ | ?install เพื่อเรียกปุ่มติดตั้งกลับมา
+  const q = new URLSearchParams(location.search);
+  if (q.has('setup')) id = '';
+  if (q.has('install')) { try { localStorage.removeItem(DISMISS); } catch (_) {} }
 
   id ? start(id) : show('setup');
+  refreshInstallButton();
 })();
 
-window.addEventListener('online', () => {
+window.addEventListener('online',  () => {
   if (document.getElementById('offline').classList.contains('on')) location.reload();
 });
 window.addEventListener('offline', () => show('offline'));
