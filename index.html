@@ -28,6 +28,8 @@
             env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
   #appWrap.on{display:block}
+  /* มีปุ่มติดตั้งอยู่ → ย่อแอปลงให้ปุ่มมีที่ของตัวเอง ไม่ทับเนื้อหา */
+  #appWrap.with-install{padding-bottom:calc(env(safe-area-inset-bottom) + 54px)}
   #app{width:100%;height:100%;border:0;background:#f0f6ff;display:block}
 
   .screen{
@@ -261,16 +263,17 @@ function isIOS()    { return /iPad|iPhone|iPod/.test(UA) || (navigator.platform 
 function dismissed(){ try { return localStorage.getItem(DISMISS) === '1'; } catch (_) { return false; } }
 
 function refreshInstallButton() {
-  const show = !isStandalone() && !dismissed() && (deferred || isIOS() || isInApp());
+  const want = !isStandalone() && !dismissed() && (deferred || isIOS() || isInApp());
   document.getElementById('installLabel').textContent =
     isInApp() ? 'เปิดในเบราว์เซอร์' : 'ติดตั้งลงหน้าจอ';
-  document.getElementById('install').classList.toggle('on', show);
+  document.getElementById('install').classList.toggle('on', want);
+  document.getElementById('appWrap').classList.toggle('with-install', want);
 }
 
 function dismissInstall(e) {
   e.stopPropagation();
   try { localStorage.setItem(DISMISS, '1'); } catch (_) {}
-  document.getElementById('install').classList.remove('on');
+  refreshInstallButton();
 }
 
 function sheet(title, lead, steps) {
@@ -289,8 +292,8 @@ async function installClick(e) {
     deferred.prompt();
     const res = await deferred.userChoice.catch(() => null);
     deferred = null;
-    if (res && res.outcome === 'accepted') document.getElementById('install').classList.remove('on');
-    else refreshInstallButton();
+    if (res && res.outcome === 'accepted') { try { localStorage.setItem(DISMISS,'1'); } catch(_){} }
+    refreshInstallButton();
     return;
   }
 
@@ -327,7 +330,8 @@ window.addEventListener('beforeinstallprompt', e => {
 });
 window.addEventListener('appinstalled', () => {
   deferred = null;
-  document.getElementById('install').classList.remove('on');
+  try { localStorage.setItem(DISMISS, '1'); } catch (_) {}
+  refreshInstallButton();
 });
 
 /* ───────── เริ่มทำงาน ───────── */
