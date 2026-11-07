@@ -18,12 +18,14 @@
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@600;700&family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   *{box-sizing:border-box}
-  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#0f3460}
+  /* --chrome = สีขอบจอ ทุกพื้นผิวที่อาจโผล่ตรงขอบต้องใช้ตัวแปรนี้ตัวเดียว */
+  :root{--chrome:#0f3460}
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:var(--chrome)}
 
   /* กรอบนอกเว้นขอบตามพื้นที่ปลอดภัยของเครื่อง (รอยบาก แถบสถานะ ขีดโฮม)
      เว้นทั้งสี่ด้าน เพราะจอพับ/จอคู่/แนวนอน มีขอบด้านข้างด้วย ไม่ใช่แค่บนล่าง */
   #appWrap{
-    position:fixed;inset:0;display:none;background:#0f3460;
+    position:fixed;inset:0;display:none;background:var(--chrome);
     padding:env(safe-area-inset-top) env(safe-area-inset-right)
             env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
@@ -207,8 +209,7 @@ function execUrl(id) { return 'https://script.google.com/macros/s/' + id + '/exe
 // Safari จะยืดสีพื้นหลังของหน้าไปเติมพื้นที่แถบควบคุม (เช่นจอนอกของ iPhone Duo)
 // ถ้าสีไม่ตรงกับหน้าที่แสดงอยู่ จะเห็นเป็นแถบสีแปลกปลอมตรงขอบ
 function setChrome(color) {
-  document.body.style.backgroundColor = color;
-  document.documentElement.style.backgroundColor = color;
+  document.documentElement.style.setProperty('--chrome', color);
   const m = document.querySelector('meta[name="theme-color"]');
   if (m) m.setAttribute('content', color);
 }
@@ -225,7 +226,7 @@ let current = '';
 
 function show(which) {
   current = which;
-  setChrome(which === 'app' ? appBg : '#12a0bf');   // #12a0bf = กลางแถบไล่สีของหน้าตั้งค่า
+  setChrome(appBg);
   document.getElementById('setup').classList.toggle('on', which === 'setup');
   document.getElementById('offline').classList.toggle('on', which === 'offline');
   document.getElementById('appWrap').classList.toggle('on', which === 'app');
