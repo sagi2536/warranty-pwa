@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="ติดตามบ้าน">
 <meta name="robots" content="noindex,nofollow">
 
@@ -445,7 +445,7 @@ function showDebug() {
     'โหมดสีขอบจอ   ' + chromeMode() + ' -> ' + resolvedBg(),
     '',
     'ข้อความจากแอป  ' + (msgCount ? ('ได้รับ ' + msgCount + ' ครั้ง · ล่าสุด ' + lastMsg) : 'ยังไม่ได้รับเลย'),
-    'เวอร์ชันเปลือก v13',
+    'เวอร์ชันเปลือก v14',
   ];
   document.getElementById('dbg').textContent = lines.join(String.fromCharCode(10));
   document.getElementById('setup').classList.remove('on');
