@@ -168,6 +168,12 @@
     <h1 style="text-align:center">ค่าจริงจากเครื่องนี้</h1>
     <pre id="dbg" style="font-size:12.5px;line-height:1.75;white-space:pre-wrap;word-break:break-all;
       background:#f1f5f9;border-radius:12px;padding:14px;margin:0;color:#0f172a"></pre>
+    <div style="margin-top:4px;font-size:13.5px;color:#64748b">สีแถบขอบจอ</div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button onclick="setChromeMode('auto')"  style="margin:0;font-size:14px;padding:11px 8px">ตามแอป</button>
+      <button onclick="setChromeMode('dark')"  style="margin:0;font-size:14px;padding:11px 8px;background:#0b1220">เข้ม</button>
+      <button onclick="setChromeMode('light')" style="margin:0;font-size:14px;padding:11px 8px;background:#94a3b8">สว่าง</button>
+    </div>
     <button onclick="location.search=''">กลับเข้าแอป</button>
   </div>
 </div>
@@ -233,13 +239,28 @@ function rememberedBg() {
 }
 let appBg    = rememberedBg();
 let current  = '';
+const MODE_KEY = 'hwt-chrome-mode';     // auto | dark | light
+const DARK_BG  = '#0b1220';
+const LIGHT_BG = '#f0f5fb';
+function chromeMode() { try { return localStorage.getItem(MODE_KEY) || 'auto'; } catch (_) { return 'auto'; } }
+function resolvedBg() {
+  const m = chromeMode();
+  return m === 'dark' ? DARK_BG : m === 'light' ? LIGHT_BG : appBg;
+}
+function applyChrome() { setChrome(resolvedBg()); }
+function setChromeMode(m) {
+  try { localStorage.setItem(MODE_KEY, m); } catch (_) {}
+  applyChrome();
+  if (document.getElementById('debug').classList.contains('on')) showDebug();
+}
+
 let msgCount = 0;            // นับข้อความสีธีมที่ได้รับจากแอป ใช้ในหน้า ?debug
 let lastMsg  = '';
 
 function show(which) {
   current = which;
   document.getElementById('debug').classList.remove('on');
-  setChrome(appBg);
+  applyChrome();
   document.getElementById('setup').classList.toggle('on', which === 'setup');
   document.getElementById('offline').classList.toggle('on', which === 'offline');
   document.getElementById('appWrap').classList.toggle('on', which === 'app');
@@ -394,7 +415,7 @@ window.addEventListener('message', e => {
   if (!/^(#[0-9a-f]{3,8}|rgba?\([\d.,\s%]+\))$/i.test(bg)) { lastMsg = bg + ' (รูปแบบไม่ผ่าน)'; return; }
   appBg = bg;
   try { localStorage.setItem(BG_KEY, bg); } catch (_) {}   // ใช้ตอนเปิดครั้งหน้า
-  if (current === 'app') setChrome(bg);
+  applyChrome();
 });
 
 // ?debug — แสดงค่าจริงทั้งหมดเพื่อหาสาเหตุเรื่องสีขอบจอ
@@ -421,9 +442,10 @@ function showDebug() {
     'theme-color    ' + document.querySelector('meta[name="theme-color"]').content,
     'appBg          ' + appBg,
     'จำไว้ในเครื่อง ' + (localStorage.getItem(BG_KEY) || '(ยังไม่มี)'),
+    'โหมดสีขอบจอ   ' + chromeMode() + ' -> ' + resolvedBg(),
     '',
     'ข้อความจากแอป  ' + (msgCount ? ('ได้รับ ' + msgCount + ' ครั้ง · ล่าสุด ' + lastMsg) : 'ยังไม่ได้รับเลย'),
-    'เวอร์ชันเปลือก v12',
+    'เวอร์ชันเปลือก v13',
   ];
   document.getElementById('dbg').textContent = lines.join(String.fromCharCode(10));
   document.getElementById('setup').classList.remove('on');
