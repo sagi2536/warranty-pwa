@@ -1,0 +1,17 @@
+{
+  "name": "ติดตามบ้าน — ประกัน วัคซีน ค่าใช้จ่าย",
+  "short_name": "ติดตามบ้าน",
+  "description": "ติดตามวันหมดประกันสินค้า วันนัดฉีดวัคซีน ค่าสมาชิกแอป และบิลรายเดือน",
+  "lang": "th",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0f3460",
+  "theme_color": "#0f3460",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

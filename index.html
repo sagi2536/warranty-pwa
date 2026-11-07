@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ติดตามบ้าน</title>
+
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0f3460">
+<link rel="icon" href="favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ติดตามบ้าน">
+<meta name="robots" content="noindex,nofollow">
+
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@600;700&family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#0f3460}
+  #app{position:fixed;inset:0;width:100%;height:100vh;height:100dvh;border:0;display:none;background:#f0f6ff}
+
+  .screen{
+    position:fixed;inset:0;display:none;place-items:center;padding:24px;
+    padding-top:max(24px,env(safe-area-inset-top));padding-bottom:max(24px,env(safe-area-inset-bottom));
+    background:linear-gradient(140deg,#1abc9c,#0984e3);
+    font-family:'Sarabun',sans-serif;overflow-y:auto;
+  }
+  .screen.on{display:grid}
+  .card{
+    background:#fff;border-radius:22px;padding:32px 26px;max-width:430px;width:100%;
+    box-shadow:0 18px 50px rgba(0,0,0,.22);text-align:center;
+  }
+  .card img{width:76px;height:76px;border-radius:18px;margin-bottom:16px}
+  h1{font-family:'Kanit',sans-serif;font-size:21px;font-weight:600;color:#0f3460;margin:0 0 8px}
+  p{font-size:14.5px;color:#64748b;line-height:1.7;margin:0 0 20px}
+  input{
+    width:100%;padding:13px 15px;border:1.5px solid #cbd5e1;border-radius:12px;
+    font-family:'Sarabun',sans-serif;font-size:15px;color:#1e293b;outline:none;
+  }
+  input:focus{border-color:#1abc9c;box-shadow:0 0 0 3px rgba(26,188,156,.15)}
+  button{
+    width:100%;margin-top:12px;padding:14px;border:none;border-radius:12px;cursor:pointer;
+    background:linear-gradient(135deg,#1abc9c,#0984e3);color:#fff;
+    font-family:'Sarabun',sans-serif;font-size:16px;font-weight:700;
+  }
+  button:active{transform:scale(.99)}
+  .err{display:none;margin-top:12px;font-size:13.5px;color:#e74c3c;font-weight:600}
+  .err.on{display:block}
+  .hint{margin:18px 0 0;font-size:12.5px;color:#94a3b8;line-height:1.7}
+  .big{font-size:48px;margin-bottom:12px}
+</style>
+</head>
+<body>
+
+<!-- แอปจริงถูกฝังไว้ในนี้ -->
+<iframe id="app" title="ติดตามบ้าน"
+        allow="clipboard-read; clipboard-write; camera; geolocation"></iframe>
+
+<!-- ตั้งค่าครั้งแรก: ถามลิงก์ของระบบ แล้วจำไว้ในเครื่อง -->
+<div class="screen" id="setup">
+  <div class="card">
+    <img src="icon-192.png" alt="">
+    <h1>เชื่อมต่อระบบติดตามบ้าน</h1>
+    <p>วางลิงก์ของระบบที่ได้รับมา แล้วแอปจะจำไว้ให้ ไม่ต้องกรอกอีก</p>
+    <input id="link" type="text" inputmode="url" autocomplete="off" spellcheck="false"
+           placeholder="https://script.google.com/macros/s/.../exec">
+    <button onclick="save()">เชื่อมต่อ</button>
+    <div class="err" id="err">ไม่พบรหัสระบบในลิงก์ — ตรวจว่าคัดลอกมาครบหรือยัง</div>
+    <p class="hint">
+      ลิงก์จะถูกเก็บไว้ในเครื่องนี้เท่านั้น ไม่ได้ส่งไปที่ไหน<br>
+      ถ้าลิงก์มี <b>/u/3/</b> หรือเลขอื่นคั่นอยู่ ไม่เป็นไร แอปตัดให้เอง
+    </p>
+  </div>
+</div>
+
+<!-- ไม่มีเน็ต -->
+<div class="screen" id="offline">
+  <div class="card">
+    <div class="big">📡</div>
+    <h1>ไม่ได้เชื่อมต่ออินเทอร์เน็ต</h1>
+    <p>ข้อมูลทั้งหมดเก็บอยู่บน Google Sheets จึงต้องต่อเน็ตเพื่อใช้งาน<br>
+       เมื่อกลับมาออนไลน์ ระบบจะเปิดให้เองอัตโนมัติ</p>
+    <button onclick="location.reload()">ลองใหม่</button>
+  </div>
+</div>
+
+<script>
+const KEY = 'hwt-exec-id';
+
+// ดึงเฉพาะรหัส deployment ออกจากสิ่งที่วางมา
+// รองรับทั้งลิงก์เต็ม ลิงก์ที่มี /u/<เลข>/ คั่น และรหัสเปล่า ๆ
+function extractId(v) {
+  const m = (v || '').toString().match(/AKfycb[A-Za-z0-9_\-]{10,}/);
+  return m ? m[0] : '';
+}
+
+function execUrl(id) {
+  return 'https://script.google.com/macros/s/' + id + '/exec';
+}
+
+function show(which) {
+  document.getElementById('setup').classList.toggle('on', which === 'setup');
+  document.getElementById('offline').classList.toggle('on', which === 'offline');
+  document.getElementById('app').style.display = which === 'app' ? 'block' : 'none';
+}
+
+function save() {
+  const id = extractId(document.getElementById('link').value);
+  if (!id) { document.getElementById('err').classList.add('on'); return; }
+  try { localStorage.setItem(KEY, id); } catch (_) {}
+  start(id);
+}
+
+function start(id) {
+  if (!navigator.onLine) { show('offline'); return; }
+  document.getElementById('app').src = execUrl(id);
+  show('app');
+}
+
+(function boot() {
+  // รหัสส่งมาทาง #hash ได้ เพื่อไม่ต้องเก็บลิงก์ไว้ในโค้ดที่เปิดเป็นสาธารณะ
+  let id = extractId(location.hash);
+  if (id) {
+    try { localStorage.setItem(KEY, id); } catch (_) {}
+    history.replaceState(null, '', location.pathname + location.search);
+  }
+  if (!id) { try { id = localStorage.getItem(KEY) || ''; } catch (_) {} }
+
+  // เปิดด้วย ?setup เพื่อตั้งลิงก์ใหม่
+  if (new URLSearchParams(location.search).has('setup')) id = '';
+
+  id ? start(id) : show('setup');
+})();
+
+window.addEventListener('online', () => {
+  if (document.getElementById('offline').classList.contains('on')) location.reload();
+});
+window.addEventListener('offline', () => show('offline'));
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
