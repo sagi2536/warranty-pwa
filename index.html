@@ -162,6 +162,16 @@
   </div>
 </div>
 
+<!-- หน้าวินิจฉัย เปิดด้วย ?debug -->
+<div class="screen" id="debug" style="background:#0b1220">
+  <div class="card" style="text-align:left;max-width:520px">
+    <h1 style="text-align:center">ค่าจริงจากเครื่องนี้</h1>
+    <pre id="dbg" style="font-size:12.5px;line-height:1.75;white-space:pre-wrap;word-break:break-all;
+      background:#f1f5f9;border-radius:12px;padding:14px;margin:0;color:#0f172a"></pre>
+    <button onclick="location.search=''">กลับเข้าแอป</button>
+  </div>
+</div>
+
 <!-- ตั้งค่าครั้งแรก -->
 <div class="screen" id="setup">
   <div class="card">
@@ -221,11 +231,14 @@ function rememberedBg() {
   try { const v = localStorage.getItem(BG_KEY); if (v) return v; } catch (_) {}
   return matchMedia('(prefers-color-scheme: dark)').matches ? '#0b1220' : '#f0f5fb';
 }
-let appBg   = rememberedBg();
-let current = '';
+let appBg    = rememberedBg();
+let current  = '';
+let msgCount = 0;            // นับข้อความสีธีมที่ได้รับจากแอป ใช้ในหน้า ?debug
+let lastMsg  = '';
 
 function show(which) {
   current = which;
+  document.getElementById('debug').classList.remove('on');
   setChrome(appBg);
   document.getElementById('setup').classList.toggle('on', which === 'setup');
   document.getElementById('offline').classList.toggle('on', which === 'offline');
@@ -365,6 +378,7 @@ window.addEventListener('appinstalled', () => {
   if (q.has('setup')) id = '';
   if (q.has('install')) { try { localStorage.removeItem(DISMISS); } catch (_) {} }
 
+  if (q.has('debug')) { setTimeout(showDebug, 6000); }   // รอแอปส่งสีมาก่อนค่อยแสดงผล
   id ? start(id) : show('setup');
   refreshInstallButton();
 })();
@@ -376,11 +390,48 @@ window.addEventListener('message', e => {
   const d = e.data;
   if (!d || d.type !== 'hwt-theme' || typeof d.bg !== 'string') return;
   const bg = d.bg.trim();
-  if (!/^(#[0-9a-f]{3,8}|rgba?\([\d.,\s%]+\))$/i.test(bg)) return;
+  msgCount++; lastMsg = bg;
+  if (!/^(#[0-9a-f]{3,8}|rgba?\([\d.,\s%]+\))$/i.test(bg)) { lastMsg = bg + ' (รูปแบบไม่ผ่าน)'; return; }
   appBg = bg;
   try { localStorage.setItem(BG_KEY, bg); } catch (_) {}   // ใช้ตอนเปิดครั้งหน้า
   if (current === 'app') setChrome(bg);
 });
+
+// ?debug — แสดงค่าจริงทั้งหมดเพื่อหาสาเหตุเรื่องสีขอบจอ
+function showDebug() {
+  const cs = getComputedStyle(document.documentElement);
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:fixed;top:env(safe-area-inset-top);right:env(safe-area-inset-right);' +
+                        'bottom:env(safe-area-inset-bottom);left:env(safe-area-inset-left)';
+  document.body.appendChild(probe);
+  const p = getComputedStyle(probe);
+  const inset = [p.top, p.right, p.bottom, p.left].join('  ');
+  probe.remove();
+
+  const lines = [
+    'safe-area บน/ขวา/ล่าง/ซ้าย',
+    '   ' + inset,
+    '',
+    'ขนาดหน้าต่าง   ' + innerWidth + ' x ' + innerHeight,
+    'ขนาดหน้าจอ     ' + screen.width + ' x ' + screen.height,
+    'โหมดแอปติดตั้ง ' + (isStandalone() ? 'ใช่' : 'ไม่ (เปิดในเบราว์เซอร์)'),
+    'ระบบชอบธีม     ' + (matchMedia('(prefers-color-scheme: dark)').matches ? 'มืด' : 'สว่าง'),
+    '',
+    'สีที่ใช้ตอนนี้  ' + cs.getPropertyValue('--chrome').trim(),
+    'theme-color    ' + document.querySelector('meta[name="theme-color"]').content,
+    'appBg          ' + appBg,
+    'จำไว้ในเครื่อง ' + (localStorage.getItem(BG_KEY) || '(ยังไม่มี)'),
+    '',
+    'ข้อความจากแอป  ' + (msgCount ? ('ได้รับ ' + msgCount + ' ครั้ง · ล่าสุด ' + lastMsg) : 'ยังไม่ได้รับเลย'),
+    'เวอร์ชันเปลือก v12',
+  ];
+  document.getElementById('dbg').textContent = lines.join(String.fromCharCode(10));
+  document.getElementById('setup').classList.remove('on');
+  document.getElementById('offline').classList.remove('on');
+  document.getElementById('appWrap').classList.remove('on');
+  document.getElementById('install').classList.remove('on');
+  document.getElementById('debug').classList.add('on');
+}
 
 window.addEventListener('online',  () => {
   if (document.getElementById('offline').classList.contains('on')) location.reload();
