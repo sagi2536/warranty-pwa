@@ -210,8 +210,12 @@ function setChrome(color) {
   if (m) m.setAttribute('content', color);
 }
 
+let appBg  = '#0f3460';      // สีพื้นหลังของแอป อัปเดตจากข้อความที่แอปส่งมา
+let current = '';
+
 function show(which) {
-  setChrome(which === 'app' ? '#0f3460' : '#12a0bf');   // กลางแถบไล่สีของหน้าตั้งค่า
+  current = which;
+  setChrome(which === 'app' ? appBg : '#12a0bf');   // #12a0bf = กลางแถบไล่สีของหน้าตั้งค่า
   document.getElementById('setup').classList.toggle('on', which === 'setup');
   document.getElementById('offline').classList.toggle('on', which === 'offline');
   document.getElementById('appWrap').classList.toggle('on', which === 'app');
@@ -345,6 +349,18 @@ window.addEventListener('appinstalled', () => {
   id ? start(id) : show('setup');
   refreshInstallButton();
 })();
+
+// แอปข้างในบอกสีพื้นหลังมา (เปลี่ยนตามโหมดสว่าง/มืด) เพื่อให้ขอบจอกลมกลืนไปกับแอป
+window.addEventListener('message', e => {
+  // รับเฉพาะจากโดเมนที่ Apps Script ใช้เสิร์ฟเนื้อหา และต้องเป็นค่าสีที่ถูกรูปแบบเท่านั้น
+  if (!/^https:\/\/[a-z0-9-]+\.googleusercontent\.com$/i.test(e.origin)) return;
+  const d = e.data;
+  if (!d || d.type !== 'hwt-theme' || typeof d.bg !== 'string') return;
+  const bg = d.bg.trim();
+  if (!/^(#[0-9a-f]{3,8}|rgba?\([\d.,\s%]+\))$/i.test(bg)) return;
+  appBg = bg;
+  if (current === 'app') setChrome(bg);
+});
 
 window.addEventListener('online',  () => {
   if (document.getElementById('offline').classList.contains('on')) location.reload();
