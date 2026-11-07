@@ -123,10 +123,11 @@
     <input id="link" type="text" inputmode="url" autocomplete="off" spellcheck="false"
            placeholder="https://script.google.com/macros/s/.../exec">
     <button onclick="save()">เชื่อมต่อ</button>
+    <button class="ghost" onclick="pasteLink()">วางลิงก์จากคลิปบอร์ด</button>
     <div class="err" id="err">ไม่พบรหัสระบบในลิงก์ — ตรวจว่าคัดลอกมาครบหรือยัง</div>
     <p class="hint">
-      ลิงก์จะถูกเก็บไว้ในเครื่องนี้เท่านั้น ไม่ได้ส่งไปที่ไหน<br>
-      ถ้าลิงก์มี <b>/u/3/</b> หรือเลขอื่นคั่นอยู่ ไม่เป็นไร แอปตัดให้เอง
+      ลิงก์อยู่ในข้อความที่ได้รับมา — คัดลอกทั้งเส้นแล้วกดปุ่มวางได้เลย<br>
+      เก็บไว้ในเครื่องนี้เท่านั้น ไม่ได้ส่งไปที่ไหน และถ้าลิงก์มี <b>/u/3/</b> คั่นอยู่ แอปตัดให้เอง
     </p>
   </div>
 </div>
@@ -168,6 +169,19 @@ function save() {
   if (!id) { document.getElementById('err').classList.add('on'); return; }
   try { localStorage.setItem(KEY, id); } catch (_) {}
   start(id);
+}
+
+// วางจากคลิปบอร์ดแล้วเชื่อมต่อให้เลยถ้าเจอรหัส
+async function pasteLink() {
+  const box = document.getElementById('link');
+  try {
+    const t = await navigator.clipboard.readText();
+    box.value = t;
+    if (extractId(t)) save();
+    else document.getElementById('err').classList.add('on');
+  } catch (_) {
+    box.focus();   // เบราว์เซอร์ไม่ให้อ่านคลิปบอร์ด → ให้กดวางเองในช่อง
+  }
 }
 
 function start(id) {
